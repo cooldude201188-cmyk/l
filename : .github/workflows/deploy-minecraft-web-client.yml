@@ -1,0 +1,41 @@
+name: Deploy Minecraft Web Client
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Clone upstream repository (zardoy/minecraft-web-client)
+      run: git clone --depth 1 https://github.com/zardoy/minecraft-web-client.git upstream
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install & build upstream
+      working-directory: upstream
+      run: |
+        npm ci
+        npm run build
+
+    - name: Detect output directory
+      id: detect
+      run: |
+        if [ -d upstream/dist ]; then echo "dir=upstream/dist" >> $GITHUB_OUTPUT
+        elif [ -d upstream/build ]; then echo "dir=upstream/build" >> $GITHUB_OUTPUT
+        else echo "dir=upstream/dist" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ${{ steps.detect.outputs.dir }}
